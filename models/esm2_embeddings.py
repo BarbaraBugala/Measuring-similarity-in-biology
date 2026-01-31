@@ -1,35 +1,71 @@
 import torch
 import esm
+from Bio import SeqIO  # pip install biopython
+from pathlib import Path
+import re  # for sanitizing filenames
 
-# 1. Load pretrained ESM-2 model (CPU-friendly)
-model, alphabet = esm.pretrained.esm2_t12_35M_UR50D() 
-model.eval()  # set to evaluation mode
+# -----------------------------
+# CONFIG
+# -----------------------------
+FASTA_FILE = "data/proteins.fasta"       # your dataset
+OUTPUT_DIR = "data/embeddings_esm2"     # folder to save embeddings
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# 2. Create a batch converter
+# -----------------------------
+# HELPER FUNCTION TO SANITIZE FILENAMES
+# -----------------------------
+def sanitize_filename(name):
+    # Replace invalid Windows filename characters with underscore
+    return re.sub(r'[<>:"/\\|?* ]', '_', name)
+
+# -----------------------------
+# LOAD MODEL
+# -----------------------------
+print("Loading ESM-2 model...")
+model, alphabet = esm.pretrained.esm2_t12_35M_UR50D()
+model = model.to(DEVICE)
+model.eval()
 batch_converter = alphabet.get_batch_converter()
 
-# 3. Example protein sequences (list of tuples: (name, sequence))
-sequences = [
-    ("protein1", "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"),
-    ("protein2", "GATAYIAKQRQISFVKSHFSRQLEERLGLIEVQ")
-]
+# -----------------------------
+# LOAD SEQUENCES
+# -----------------------------
+sequences = [(record.id, str(record.seq)) for record in SeqIO.parse(FASTA_FILE, "fasta")]
+if not sequences:
+    raise ValueError("No sequences found in the FASTA file!")
 
+# -----------------------------
+# CREATE OUTPUT DIRECTORY
+# -----------------------------
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+
+# -----------------------------
+# CONVERT TO TOKENS
+# -----------------------------
 batch_labels, batch_strs, batch_tokens = batch_converter(sequences)
+batch_tokens = batch_tokens.to(DEVICE)
 
-# 4. Run the model (get embeddings)
+# -----------------------------
+# COMPUTE EMBEDDINGS
+# -----------------------------
 with torch.no_grad():
     results = model(batch_tokens, repr_layers=[12], return_contacts=False)
     token_representations = results["representations"][12]
 
-# 5. Get per-sequence embeddings by averaging over tokens (excluding padding)
-sequence_embeddings = []
+# -----------------------------
+# SAVE EMBEDDINGS
+# -----------------------------
+sequence_embeddings = {}
 for i, (label, seq) in enumerate(sequences):
-    # mask padding tokens
     seq_len = len(seq)
-    embedding = token_representations[i, 1:seq_len+1].mean(0)
-    sequence_embeddings.append((label, embedding))
+    embedding = token_representations[i, 1:seq_len+1].mean(0).cpu()
+    sequence_embeddings[label] = embedding
 
-# 6. Print embeddings
-for label, emb in sequence_embeddings:
-    print(f"{label} embedding shape: {emb.shape}")
-    print(emb)
+    # SANITIZE label before saving
+    safe_label = sanitize_filename(label)
+    torch.save(embedding, Path(OUTPUT_DIR) / f"{safe_label}.pt")
+
+# Save all embeddings together in one file
+torch.save(sequence_embeddings, Path(OUTPUT_DIR) / "all_embeddings.pt")
+
+print(f"All embeddings saved in {OUTPUT_DIR}")
