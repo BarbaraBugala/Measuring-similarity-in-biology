@@ -7,8 +7,8 @@ import re  # for sanitizing filenames
 # -----------------------------
 # CONFIG
 # -----------------------------
-FASTA_FILE = "data/proteins.fasta"       # your dataset
-OUTPUT_DIR = "data/embeddings_esm2"     # folder to save embeddings
+FASTA_FILE = "data/curated-AMPs.fasta"       # your dataset
+OUTPUT_DIR = "data/embeddings_esm2_curated-AMPs"     # folder to save embeddings
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # -----------------------------
