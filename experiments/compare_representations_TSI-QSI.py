@@ -14,7 +14,7 @@ from src.qsi import EfficientApproxQSI
 from src.tsi import EfficientTSI
 from src.tsi import EfficientApproxTSI
 
-from config import DISTANCES_QSI_1, DISTANCES_QSI_2, COMPARISON_OF_QSI
+from config import RESULTS_DIR
 
 
 USE_APPROX = True   # recommended for large datasets (e.g. 4000 proteins)
@@ -24,8 +24,8 @@ USE_APPROX = True   # recommended for large datasets (e.g. 4000 proteins)
 # -----------------------------
 print("Loading distance matrices...")
 
-distance_1 = pd.read_csv(DISTANCES_QSI_1, index_col=0).values
-distance_2 = pd.read_csv(DISTANCES_QSI_2, index_col=0).values
+distance_1 = pd.read_csv(RESULTS_DIR / "distances" / "esm2_cosine_distance.csv", index_col=0).values
+distance_2 = pd.read_csv(RESULTS_DIR / "distances" / "sequence_blosum_distance.csv", index_col=0).values
 
 n = distance_1.shape[0]
 
@@ -67,7 +67,7 @@ else:
 
 qsi_score = qsi(representations)
 
-print(f"QSI score ({COMPARISON_OF_QSI}): {qsi_score}")
+print(f"QSI score (cosine vs blosum): {qsi_score}")
 
 
 # -----------------------------
@@ -86,4 +86,4 @@ else:
 
 tsi_score = tsi(representations)
 
-print(f"TSI score ({COMPARISON_OF_QSI}): {tsi_score}")
+print(f"TSI score (cosine vs blosum): {tsi_score}")
