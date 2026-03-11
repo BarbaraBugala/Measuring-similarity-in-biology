@@ -21,3 +21,9 @@ DISTANCE_DIR.mkdir(parents=True, exist_ok=True)
 DISTANCES_CKA_1 = DISTANCE_DIR / "sequence_blosum_kernel.csv"
 DISTANCES_CKA_2 = DISTANCE_DIR / "esm2_cosine_kernel.csv"
 COMPARISON_OF_CKA = "Blosum and Cosine"
+
+
+# for QSI comparison use distance
+DISTANCES_QSI_1 = DISTANCE_DIR / "msa_p_distance.csv"
+DISTANCES_QSI_2 = DISTANCE_DIR / "esm2_cosine_distance.csv"
+COMPARISON_OF_QSI = "MSA and cosine"

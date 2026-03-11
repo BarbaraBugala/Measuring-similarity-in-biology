@@ -7,34 +7,19 @@ from pathlib import Path
 from src.data import RepresentationPair
 from src.qsi import EfficientQSI
 from src.qsi import EfficientApproxQSI
+from config import DISTANCES_QSI_1, DISTANCES_QSI_2, COMPARISON_OF_QSI
 
-# -----------------------------
-# CONFIG
-# -----------------------------
-DIST_DIR = Path("results")
-
-HAMMING = DIST_DIR / "distance_matrices_hamming/sequence_hamming_distance.csv"
-BLOSUM = DIST_DIR / "distance_matrices_blosum/sequence_blosum_distance.csv"
-ESM_COSINE = DIST_DIR / "esm_distance_matrices/esm2_cosine_similarity.csv"
-ESM_EUCLIDEAN = DIST_DIR / "esm_distance_matrices/esm2_euclidean_distance.csv"
 
 USE_APPROX = True  # safer for 4000 proteins
-
-
 # -----------------------------
 # LOAD MATRICES
 # -----------------------------
 print("Loading distance matrices...")
 
-d_hamming = pd.read_csv(HAMMING, index_col=0).values
-d_blosum = pd.read_csv(BLOSUM, index_col=0).values
-d_esm_euclidean = pd.read_csv(ESM_EUCLIDEAN, index_col=0).values
+distance_1 = pd.read_csv(DISTANCES_QSI_1, index_col=0).values
+distance_2 = pd.read_csv(DISTANCES_QSI_2, index_col=0).values
 
-# Convert cosine similarity → distance
-cosine_sim = pd.read_csv(ESM_COSINE, index_col=0).values
-d_esm_cosine = 1 - cosine_sim
-
-n = d_hamming.shape[0]
+n = distance_1.shape[0]
 
 print(f"Loaded matrices for {n} proteins.")
 
@@ -57,8 +42,8 @@ Y = np.arange(n)
 representations = RepresentationPair(
     X=X,
     Y=Y,
-    d_x=make_distance_function(d_blosum),
-    d_y=make_distance_function(d_esm_cosine),
+    d_x=make_distance_function(distance_1),
+    d_y=make_distance_function(distance_2),
 )
 
 
@@ -72,4 +57,4 @@ else:
 
 score = qsi(representations)
 
-print("\nQSI score (Blosum vs ESM cosine):", score)
+print(f"\nQSI score ({COMPARISON_OF_QSI}):", score)
