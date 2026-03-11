@@ -26,8 +26,8 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 db_name = output_dir / "blast" / "blast_db"
 blast_output = output_dir / "blast_results.tsv"
-distance_csv = output_dir / "sequence_blast_distance.csv"
-kernel_csv = output_dir / "sequence_blast_kernel.csv"
+distance_csv = output_dir / "distances" / "sequence_blast_distance.csv"
+kernel_csv = output_dir / "kernels" / "sequence_blast_kernel.csv"
 
 # -----------------------------
 # LOAD SEQUENCE LABELS

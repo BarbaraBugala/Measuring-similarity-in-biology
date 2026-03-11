@@ -1,86 +1,89 @@
 #!/usr/bin/env python3
 """
-compare_representations_CKA.py
+compute_pairwise_CKA.py
 
-Loads two kernel matrices (already converted from distance matrices),
-centers them, and computes CKA similarity.
+Computes CKA similarity between ESM2 embeddings (cosine and euclidean)
+and sequence-based kernels (Blosum, Hamming, Blast, MSA) and saves results.
 """
 
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from config import DISTANCES_CKA_1, DISTANCES_CKA_2, COMPARISON_OF_CKA
+from config import DISTANCE_DIR
 
 # -----------------------------
-# Load kernel matrices
+# CONFIG
 # -----------------------------
-print("Loading kernel matrices...")
+OUTPUT_FILE = DISTANCE_DIR / "similarities" / "cka_scores.csv"
+OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-K1 = pd.read_csv(DISTANCES_CKA_1, index_col=0)
-K2 = pd.read_csv(DISTANCES_CKA_2, index_col=0)
+KERNEL_FILES = {
+    "hamming": DISTANCE_DIR / "kernels" / "sequence_hamming_kernel.csv",
+    "blosum": DISTANCE_DIR / "kernels" / "sequence_blosum_kernel.csv",
+    "blast": DISTANCE_DIR / "kernels" / "sequence_blast_kernel.csv",
+    "msa_p": DISTANCE_DIR / "kernels" / "msa_p_kernel.csv",
+    "esm2_cosine": DISTANCE_DIR / "kernels" / "esm2_cosine_kernel.csv",
+    "esm2_euclidean": DISTANCE_DIR / "kernels" / "esm2_euclidean_kernel.csv",
+}
 
-
-# -----------------------------
-# Normalize sequence IDs to match
-# -----------------------------
-def normalize_ids(ids):
-    """
-    Convert IDs from ESM style (tr_X_Y_Z) to Hamming style (tr|X|Y_Z)
-    """
-    normalized = []
-    for lab in ids:
-        parts = lab.split('_', 2)  # split into at most 3 parts
-        if len(parts) == 3:
-            new_lab = f"{parts[0]}|{parts[1]}|{parts[2]}"
-        else:
-            new_lab = lab
-        normalized.append(new_lab)
-    return pd.Index(normalized)
-
-K1.index = normalize_ids(K1.index)
-K1.columns = normalize_ids(K1.columns)
-K2.index = normalize_ids(K2.index)
-K2.columns = normalize_ids(K2.columns)
-
-
-# Ensure same sequences and ordering
-
-common_seqs = K1.index.intersection(K2.index)
-K1_aligned = K1.loc[common_seqs, common_seqs].values
-K2_aligned = K2.loc[common_seqs, common_seqs].values
-
-N = K1_aligned.shape[0]
-print(f"Matrices loaded and aligned: {N} x {N}")
-
-print("K1 diagonal:", np.diag(K1_aligned)[:10])
-print("K2 diagonal:", np.diag(K2_aligned)[:10])
+ESM_METHODS = ["esm2_cosine", "esm2_euclidean"]
+SEQ_METHODS = ["hamming", "blosum", "blast", "msa_p"]
 
 # -----------------------------
-# Centering function
+# CKA IMPLEMENTATION
 # -----------------------------
 def center_kernel(K):
-    """Double-center a kernel matrix for CKA."""
     n = K.shape[0]
     H = np.eye(n) - np.ones((n, n)) / n
     return H @ K @ H
 
-print("Centering kernels...")
-K1c = center_kernel(K1_aligned)
-K2c = center_kernel(K2_aligned)
-
-# -----------------------------
-# Compute CKA
-# -----------------------------
 def compute_cka(K, L):
-    """Linear or kernel CKA."""
-    hsic = np.trace(K @ L)
-    norm_k = np.trace(K @ K)
-    norm_l = np.trace(L @ L)
+    Kc = center_kernel(K)
+    Lc = center_kernel(L)
+    hsic = np.trace(Kc @ Lc)
+    norm_k = np.trace(Kc @ Kc)
+    norm_l = np.trace(Lc @ Lc)
     return hsic / np.sqrt(norm_k * norm_l)
 
-print("Computing CKA...")
-cka_value = compute_cka(K1c, K2c)
 
-print("\n==============================")
-print(f"CKA similarity for {COMPARISON_OF_CKA}: {cka_value:.6f}")
-print("==============================")
+
+# -----------------------------
+# LOAD ALL KERNELS
+# -----------------------------
+print("Loading kernel matrices...")
+kernels = {}
+ids = {}
+
+for name, path in KERNEL_FILES.items():
+    df = pd.read_csv(path, index_col=0)
+    kernels[name] = df
+    ids[name] = set(df.index)
+
+print("All kernels loaded.")
+
+# -----------------------------
+# COMPUTE CKA FOR ESM vs SEQ KERNELS
+# -----------------------------
+results = []
+
+for esm in ESM_METHODS:
+    for seq in SEQ_METHODS:
+        print(f"Computing CKA: {esm} vs {seq}")
+        # Align on common IDs
+        common_ids = sorted(ids[esm].intersection(ids[seq]))
+        K = kernels[esm].loc[common_ids, common_ids].values
+        L = kernels[seq].loc[common_ids, common_ids].values
+        score = compute_cka(K, L)
+        results.append({
+            "esm_method": esm,
+            "sequence_method": seq,
+            "cka": score
+        })
+
+# -----------------------------
+# SAVE RESULTS
+# -----------------------------
+df_results = pd.DataFrame(results)
+df_results.to_csv(OUTPUT_FILE, index=False)
+print("\nSaved CKA scores to:", OUTPUT_FILE)
+print(df_results)

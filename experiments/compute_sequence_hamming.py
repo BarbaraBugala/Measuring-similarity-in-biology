@@ -53,7 +53,7 @@ for i in range(N):
 # SAVE DISTANCE MATRIX AS CSV
 # -----------------------------
 df = pd.DataFrame(dist_mat, index=labels, columns=labels)
-distance_path = output_dir / "sequence_hamming_distance.csv"
+distance_path = output_dir / "distances" / "sequence_hamming_distance.csv"
 df.to_csv(distance_path)
 print(f"Distance matrix saved to: {distance_path}")
 
@@ -67,6 +67,6 @@ gamma = 1.0 / median_sq if median_sq > 0 else 1.0
 
 rbf_kernel = np.exp(-gamma * dist_mat**2)
 df_kernel = pd.DataFrame(rbf_kernel, index=labels, columns=labels)
-kernel_path = output_dir / "sequence_hamming_kernel.csv"
+kernel_path = output_dir / "kernels" / "sequence_hamming_kernel.csv"
 df_kernel.to_csv(kernel_path)
 print(f"RBF kernel matrix saved to: {kernel_path}")

@@ -43,7 +43,7 @@ def main():
             matrix[j, i] = d
 
     df = pd.DataFrame(matrix, index=ids, columns=ids)
-    distance_file = output_dir / "msa_p_distance.csv"
+    distance_file = output_dir / "distances" / "msa_p_distance.csv"
     df.to_csv(distance_file)
     print(f"Saved p-distance matrix to {distance_file}")
 
@@ -53,7 +53,7 @@ def main():
     print("Converting p-distance to 1-D kernel for CKA...")
     kernel = 1.0 - matrix  # diagonal = 1, off-diagonal = similarity
     df_kernel = pd.DataFrame(kernel, index=ids, columns=ids)
-    kernel_file = output_dir / "msa_p_kernel.csv"
+    kernel_file = output_dir / "kernels" / "msa_p_kernel.csv"
     df_kernel.to_csv(kernel_file)
     print(f"Saved kernel matrix to {kernel_file}")
 

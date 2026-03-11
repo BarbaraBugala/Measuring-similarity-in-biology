@@ -84,7 +84,7 @@ def main():
     # SAVE DISTANCE MATRIX
     # -----------------------------
     df = pd.DataFrame(dist_mat, index=labels, columns=labels)
-    distance_path = output_dir / "sequence_blosum_distance.csv"
+    distance_path = output_dir / "distances" / "sequence_blosum_distance.csv"
     df.to_csv(distance_path)
     print(f"Distance matrix saved to: {distance_path}")
 
@@ -94,7 +94,7 @@ def main():
     print("Converting BLOSUM distances to 1-D kernel for CKA...")
     kernel = 1.0 - dist_mat  # diagonal = 1, off-diagonal = similarity
     df_kernel = pd.DataFrame(kernel, index=labels, columns=labels)
-    kernel_path = output_dir / "sequence_blosum_kernel.csv"
+    kernel_path = output_dir / "kernels" / "sequence_blosum_kernel.csv"
     df_kernel.to_csv(kernel_path)
     print(f"Kernel matrix saved to: {kernel_path}")
 

@@ -2,28 +2,34 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-DATA_DIR = ROOT / "data"
-RESULTS_DIR = ROOT / "results"
+DATA_DIR = ROOT / "data" / "hemoglobin_130-160"
+RESULTS_DIR = ROOT / "results" / "hemoglobin_130-160"
 
 # proteins for the experiment
-FASTA_FILE = DATA_DIR / "insulin_proteins_50-200.fasta"
+FASTA_FILE = DATA_DIR / "hemoglobin_130-160.fasta"
 
 # embeddings of esm2 from the proteins
-EMBEDDINGS_FILE = DATA_DIR / "embeddings_esm2_insulin_proteins_50-200"
+EMBEDDINGS_FILE = DATA_DIR / "embeddings_esm2_hemoglobin_130-160"
 
 # results of computations
-DISTANCE_DIR = RESULTS_DIR / "insulin_proteins_50-200"
+DISTANCE_DIR = RESULTS_DIR
 
 DISTANCE_DIR.mkdir(parents=True, exist_ok=True)
 
-
-# for CKA comparison use kernel
-DISTANCES_CKA_1 = DISTANCE_DIR / "sequence_blosum_kernel.csv"
-DISTANCES_CKA_2 = DISTANCE_DIR / "esm2_cosine_kernel.csv"
-COMPARISON_OF_CKA = "Blosum and Cosine"
+# plot directory
+PLOT_DIR = ROOT / "plots" / "hemoglobin_130-160"
 
 
-# for QSI comparison use distance
-DISTANCES_QSI_1 = DISTANCE_DIR / "msa_p_distance.csv"
-DISTANCES_QSI_2 = DISTANCE_DIR / "esm2_cosine_distance.csv"
-COMPARISON_OF_QSI = "MSA and cosine"
+# kernels available
+KERNEL_DIR = DISTANCE_DIR / "kernels"
+KERNEL_FILES = {
+    "hamming": KERNEL_DIR / "sequence_hamming_kernel.csv",
+    "blosum": KERNEL_DIR / "sequence_blosum_kernel.csv",
+    "blast": KERNEL_DIR / "sequence_blast_kernel.csv",
+    "msa_p": KERNEL_DIR / "msa_p_kernel.csv",
+    "esm2_cosine": KERNEL_DIR / "esm2_cosine_kernel.csv",
+    "esm2_euclidean": KERNEL_DIR / "esm2_euclidean_kernel.csv",
+}
+
+# embedding methods
+EMB_METHODS = ["esm2_euclidean", "esm2_cosine"]
