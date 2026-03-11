@@ -7,11 +7,15 @@ import re
 # -----------------------------
 # CONFIG
 # -----------------------------
-FASTA_FILE = "data/curated-AMPs.fasta"
-OUTPUT_DIR = "data/embeddings_esm2_curated-AMPs"
+from config import FASTA_FILE, EMBEDDINGS_FILE
+
+
+output_dir = EMBEDDINGS_FILE 
+output_dir.mkdir(parents=True, exist_ok=True)
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 5  # Reduce this to 1 if it still crashes; increase if you have high RAM
-MAX_LEN = 1022  # ESM-2 limit (1024 minus start/stop tokens)
+BATCH_SIZE = 5 
+MAX_LEN = 1022 #limit of 1024 tokens, minus start and end, protein sequence can't exceed 1022 AAs
 
 # -----------------------------
 # HELPER FUNCTIONS
@@ -28,7 +32,7 @@ def batch_generator(data, batch_size):
 # LOAD MODEL
 # -----------------------------
 print(f"Loading ESM-2 model on {DEVICE}...")
-# Using the 35M parameter model as per your original code
+# 35M params, 12 transformer layers
 model, alphabet = esm.pretrained.esm2_t12_35M_UR50D()
 model = model.to(DEVICE)
 model.eval()
@@ -37,9 +41,10 @@ batch_converter = alphabet.get_batch_converter()
 # -----------------------------
 # LOAD & FILTER SEQUENCES
 # -----------------------------
+# with skipping sequences longer than 1022 AAs
 print("Reading FASTA file...")
 all_sequences = []
-skipped = 0
+skipped = 0 
 for record in SeqIO.parse(FASTA_FILE, "fasta"):
     seq_str = str(record.seq)
     if len(seq_str) <= MAX_LEN:
@@ -56,7 +61,7 @@ if not all_sequences:
 # -----------------------------
 # CREATE OUTPUT DIRECTORY
 # -----------------------------
-Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 # -----------------------------
 # COMPUTE & SAVE EMBEDDINGS (BATCHED)
@@ -72,19 +77,19 @@ with torch.no_grad():
         # Forward pass
         # Layer 12 is the final layer for the 35M model
         results = model(tokens, repr_layers=[12], return_contacts=False)
-        token_reps = results["representations"][12]
+        token_reps = results["representations"][12] # [batch_size, seq_len, 480] in this case
 
         # Extract and save each protein in the batch
         for i, (label, seq) in enumerate(batch_data):
             seq_len = len(seq)
             
             # ESM-2 adds a start token at [0], so the sequence is at [1 : seq_len+1]
-            # .mean(0) produces the "Per-Protein" embedding
+            # .mean(0) average over amino acids (maybe its a good idea to add linear layer to transform it into vector)
             embedding = token_reps[i, 1 : seq_len + 1].mean(0).cpu()
 
             # Save individual file
             safe_label = sanitize_filename(label)
-            torch.save(embedding, Path(OUTPUT_DIR) / f"{safe_label}.pt")
+            torch.save(embedding, Path(output_dir) / f"{safe_label}.pt")
 
         # Memory Cleanup
         if DEVICE == "cuda":
@@ -93,6 +98,6 @@ with torch.no_grad():
         if (batch_idx + 1) % 5 == 0:
             print(f"Processed {(batch_idx + 1) * BATCH_SIZE} sequences...")
 
-print(f"\nSuccess! All individual embeddings saved in: {OUTPUT_DIR}")
+print(f"\nSuccess! All individual embeddings saved in: {output_dir}")
 print("Note: 'all_embeddings.pt' was skipped to save RAM. "
       "You can load individual .pt files as needed.")

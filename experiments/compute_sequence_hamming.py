@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-compute_sequence_distances.py
+compute_sequence_distances_hamming.py
 
-Computes pairwise sequence distances (Hamming or optional BLOSUM-based) 
-for short protein sequences in a FASTA file.
+Computes pairwise sequence distances Hamming
+for short protein sequences in a FASTA file,
+and also converts distances to an RBF kernel for CKA.
 """
 
 from pathlib import Path
@@ -14,9 +15,11 @@ import pandas as pd
 # -----------------------------
 # CONFIG
 # -----------------------------
-FASTA_FILE = Path("data/curated-AMPs.fasta")
-OUTPUT_DIR = Path("results/distance_matrices_hamming")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+from config import FASTA_FILE, DISTANCE_DIR
+
+fasta = FASTA_FILE
+output_dir = DISTANCE_DIR 
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------
 # LOAD SEQUENCES
@@ -47,9 +50,23 @@ for i in range(N):
         dist_mat[j, i] = diff  # symmetric
 
 # -----------------------------
-# SAVE AS CSV
+# SAVE DISTANCE MATRIX AS CSV
 # -----------------------------
 df = pd.DataFrame(dist_mat, index=labels, columns=labels)
-output_path = OUTPUT_DIR / "sequence_hamming_distance.csv"
-df.to_csv(output_path)
-print(f"Distance matrix saved to: {output_path}")
+distance_path = output_dir / "sequence_hamming_distance.csv"
+df.to_csv(distance_path)
+print(f"Distance matrix saved to: {distance_path}")
+
+# -----------------------------
+# CONVERT TO RBF KERNEL
+# -----------------------------
+print("Converting Hamming distances to RBF kernel for CKA...")
+# Heuristic gamma: 1 / median squared distance
+median_sq = np.median(dist_mat**2)
+gamma = 1.0 / median_sq if median_sq > 0 else 1.0
+
+rbf_kernel = np.exp(-gamma * dist_mat**2)
+df_kernel = pd.DataFrame(rbf_kernel, index=labels, columns=labels)
+kernel_path = output_dir / "sequence_hamming_kernel.csv"
+df_kernel.to_csv(kernel_path)
+print(f"RBF kernel matrix saved to: {kernel_path}")

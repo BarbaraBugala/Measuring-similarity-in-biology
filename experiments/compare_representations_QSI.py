@@ -15,8 +15,8 @@ DIST_DIR = Path("results")
 
 HAMMING = DIST_DIR / "distance_matrices_hamming/sequence_hamming_distance.csv"
 BLOSUM = DIST_DIR / "distance_matrices_blosum/sequence_blosum_distance.csv"
-ESM_COSINE = DIST_DIR / "esm_distance_matrices_cosine_euclidean/esm2_cosine_similarity.csv"
-ESM_EUCLIDEAN = DIST_DIR / "esm_distance_matrices_cosine_euclidean/esm2_euclidean_distance.csv"
+ESM_COSINE = DIST_DIR / "esm_distance_matrices/esm2_cosine_similarity.csv"
+ESM_EUCLIDEAN = DIST_DIR / "esm_distance_matrices/esm2_euclidean_distance.csv"
 
 USE_APPROX = True  # safer for 4000 proteins
 

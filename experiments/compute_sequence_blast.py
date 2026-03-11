@@ -2,26 +2,40 @@
 """
 compute_sequence_blast.py
 
-Performs an all-vs-all BLASTP for short peptide sequences and computes distance matrix.
-Distance is computed as: distance = 1 - percent_identity / 100
+Performs an all-vs-all BLASTP for protein sequences, computes a distance matrix,
+and produces a kernel matrix suitable for CKA.
 
-Dependencies:
-    - NCBI BLAST+ command-line tools installed (blastp, makeblastdb)
+Distance definition:
+    distance = 1 - percent_identity / 100
 """
 
 from pathlib import Path
-import pandas as pd
 import subprocess
+import numpy as np
+import pandas as pd
+from Bio import SeqIO
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-FASTA_FILE = Path("data/curated-AMPs.fasta")
-OUTPUT_DIR = Path("results/distance_matrices")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-DB_NAME = "curated_db"
-BLAST_OUTPUT = OUTPUT_DIR / "blast_results.tsv"
-DISTANCE_CSV = OUTPUT_DIR / "sequence_blast_distance.csv"
+from config import FASTA_FILE, DISTANCE_DIR
+
+fasta = FASTA_FILE
+output_dir = DISTANCE_DIR 
+output_dir.mkdir(parents=True, exist_ok=True)
+
+db_name = output_dir / "blast" / "blast_db"
+blast_output = output_dir / "blast_results.tsv"
+distance_csv = output_dir / "sequence_blast_distance.csv"
+kernel_csv = output_dir / "sequence_blast_kernel.csv"
+
+# -----------------------------
+# LOAD SEQUENCE LABELS
+# -----------------------------
+print("Loading sequence labels...")
+labels = [record.id for record in SeqIO.parse(fasta, "fasta")]
+N = len(labels)
+label_to_idx = {label: i for i, label in enumerate(labels)}
 
 # -----------------------------
 # MAKE BLAST DATABASE
@@ -29,9 +43,9 @@ DISTANCE_CSV = OUTPUT_DIR / "sequence_blast_distance.csv"
 print("Creating BLAST database...")
 subprocess.run([
     "makeblastdb",
-    "-in", str(FASTA_FILE),
+    "-in", str(fasta),
     "-dbtype", "prot",
-    "-out", DB_NAME
+    "-out", str(db_name)
 ], check=True)
 
 # -----------------------------
@@ -40,42 +54,56 @@ subprocess.run([
 print("Running all-vs-all BLASTP...")
 subprocess.run([
     "blastp",
-    "-query", str(FASTA_FILE),
-    "-db", DB_NAME,
-    "-out", str(BLAST_OUTPUT),
-    "-outfmt", "6 qseqid sseqid pident",
-    "-word_size", "2",          # short sequences
-    "-matrix", "BLOSUM80"       # better for short peptides
+    "-query", str(fasta),
+    "-db", str(db_name),
+    "-out", str(blast_output),
+    "-outfmt", "6 qseqid sseqid pident"
 ], check=True)
 
 # -----------------------------
-# PARSE RESULTS AND BUILD DISTANCE MATRIX
+# PARSE RESULTS
 # -----------------------------
-print("Parsing BLAST results and building distance matrix...")
-# Load sequences to get labels
-labels = [record.id for record in SeqIO.parse(FASTA_FILE, "fasta")]
-N = len(labels)
-label_to_idx = {label: i for i, label in enumerate(labels)}
-
-# Initialize distance matrix
-import numpy as np
-dist_mat = np.ones((N, N))  # default 1 for max distance
-
-# Read BLAST output
-with open(BLAST_OUTPUT) as f:
+print("Parsing BLAST results...")
+best_identity = {}
+with open(blast_output) as f:
     for line in f:
         qid, sid, pident = line.strip().split()
-        i = label_to_idx[qid]
-        j = label_to_idx[sid]
-        distance = 1 - float(pident)/100
-        dist_mat[i, j] = distance
+        pident = float(pident)
+        key = (qid, sid)
+        if key not in best_identity or pident > best_identity[key]:
+            best_identity[key] = pident
 
-# Symmetrize the matrix
+# -----------------------------
+# BUILD DISTANCE MATRIX
+# -----------------------------
+print("Building distance matrix...")
+dist_mat = np.ones((N, N))
+for (qid, sid), pident in best_identity.items():
+    i = label_to_idx[qid]
+    j = label_to_idx[sid]
+    distance = 1 - pident / 100
+    dist_mat[i, j] = distance
+
+# Symmetrize
 for i in range(N):
-    for j in range(i+1, N):
+    for j in range(i + 1, N):
         dist_mat[j, i] = dist_mat[i, j]
 
-# Save as CSV
+# Self-distance = 0
+np.fill_diagonal(dist_mat, 0)
+
+# -----------------------------
+# SAVE DISTANCE MATRIX
+# -----------------------------
 df = pd.DataFrame(dist_mat, index=labels, columns=labels)
-df.to_csv(DISTANCE_CSV)
-print(f"BLAST distance matrix saved to: {DISTANCE_CSV}")
+df.to_csv(distance_csv)
+print(f"BLAST distance matrix saved to: {distance_csv}")
+
+# -----------------------------
+# CONVERT TO KERNEL FOR CKA
+# -----------------------------
+print("Converting BLAST distances to 1-D kernel for CKA...")
+kernel = 1.0 - dist_mat  # diagonal = 1, off-diagonal = similarity
+df_kernel = pd.DataFrame(kernel, index=labels, columns=labels)
+df_kernel.to_csv(kernel_csv)
+print(f"BLAST kernel matrix saved to: {kernel_csv}")
