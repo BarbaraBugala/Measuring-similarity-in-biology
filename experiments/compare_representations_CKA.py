@@ -9,25 +9,13 @@ and sequence-based kernels (Blosum, Hamming, Blast, MSA) and saves results.
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from config import DISTANCE_DIR
+from config import DISTANCE_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS
 
 # -----------------------------
 # CONFIG
 # -----------------------------
 OUTPUT_FILE = DISTANCE_DIR / "similarities" / "cka_scores.csv"
 OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-KERNEL_FILES = {
-    "hamming": DISTANCE_DIR / "kernels" / "sequence_hamming_kernel.csv",
-    "blosum": DISTANCE_DIR / "kernels" / "sequence_blosum_kernel.csv",
-    "blast": DISTANCE_DIR / "kernels" / "sequence_blast_kernel.csv",
-    "msa_p": DISTANCE_DIR / "kernels" / "msa_p_kernel.csv",
-    "esm2_cosine": DISTANCE_DIR / "kernels" / "esm2_cosine_kernel.csv",
-    "esm2_euclidean": DISTANCE_DIR / "kernels" / "esm2_euclidean_kernel.csv",
-}
-
-ESM_METHODS = ["esm2_cosine", "esm2_euclidean"]
-SEQ_METHODS = ["hamming", "blosum", "blast", "msa_p"]
 
 # -----------------------------
 # CKA IMPLEMENTATION
@@ -66,7 +54,7 @@ print("All kernels loaded.")
 # -----------------------------
 results = []
 
-for esm in ESM_METHODS:
+for esm in EMB_METHODS:
     for seq in SEQ_METHODS:
         print(f"Computing CKA: {esm} vs {seq}")
         # Align on common IDs

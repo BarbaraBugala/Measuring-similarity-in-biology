@@ -21,15 +21,19 @@ PLOT_DIR = ROOT / "plots" / "hemoglobin_130-160"
 
 
 # kernels available
-KERNEL_DIR = DISTANCE_DIR / "kernels"
+KERNEL_DIR = RESULTS_DIR / "kernels"
 KERNEL_FILES = {
     "hamming": KERNEL_DIR / "sequence_hamming_kernel.csv",
     "blosum": KERNEL_DIR / "sequence_blosum_kernel.csv",
     "blast": KERNEL_DIR / "sequence_blast_kernel.csv",
     "msa_p": KERNEL_DIR / "msa_p_kernel.csv",
+    "msa_pam": KERNEL_DIR / "msa_pam_kernel.csv",
     "esm2_cosine": KERNEL_DIR / "esm2_cosine_kernel.csv",
     "esm2_euclidean": KERNEL_DIR / "esm2_euclidean_kernel.csv",
 }
 
 # embedding methods
 EMB_METHODS = ["esm2_euclidean", "esm2_cosine"]
+
+# evolutionary methods
+SEQ_METHODS = ["hamming", "blosum", "blast", "msa_p", "msa_pam"]

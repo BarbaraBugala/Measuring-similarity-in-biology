@@ -24,10 +24,16 @@ fasta = FASTA_FILE
 output_dir = DISTANCE_DIR 
 output_dir.mkdir(parents=True, exist_ok=True)
 
+distance_paths = output_dir / "distances"
+distance_paths.mkdir(parents=True, exist_ok=True)
+
+kernel_paths = output_dir / "kernels"
+kernel_paths.mkdir(parents=True, exist_ok=True)
+
 db_name = output_dir / "blast" / "blast_db"
 blast_output = output_dir / "blast_results.tsv"
-distance_csv = output_dir / "distances" / "sequence_blast_distance.csv"
-kernel_csv = output_dir / "kernels" / "sequence_blast_kernel.csv"
+distance_csv = distance_paths / "sequence_blast_distance.csv"
+kernel_csv = kernel_paths / "sequence_blast_kernel.csv"
 
 # -----------------------------
 # LOAD SEQUENCE LABELS

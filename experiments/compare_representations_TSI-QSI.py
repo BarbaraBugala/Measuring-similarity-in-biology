@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+compute_pairwise_QSI_TSI.py
+
+Computes QSI and TSI similarity between ESM embeddings and
+sequence-based kernels and saves results.
+"""
 
 import numpy as np
 import pandas as pd
@@ -7,29 +13,21 @@ from pathlib import Path
 from src.data import RepresentationPair
 
 # QSI
-from src.qsi import EfficientQSI
-from src.qsi import EfficientApproxQSI
+from src.qsi import EfficientQSI, EfficientApproxQSI
 
 # TSI
-from src.tsi import EfficientTSI
-from src.tsi import EfficientApproxTSI
+from src.tsi import EfficientTSI, EfficientApproxTSI
 
-from config import RESULTS_DIR
+from config import DISTANCE_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS
 
-
-USE_APPROX = True   # recommended for large datasets (e.g. 4000 proteins)
 
 # -----------------------------
-# LOAD MATRICES
+# CONFIG
 # -----------------------------
-print("Loading distance matrices...")
+OUTPUT_FILE = DISTANCE_DIR / "similarities" / "qsi_tsi_scores.csv"
+OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-distance_1 = pd.read_csv(RESULTS_DIR / "distances" / "esm2_cosine_distance.csv", index_col=0).values
-distance_2 = pd.read_csv(RESULTS_DIR / "distances" / "sequence_blosum_distance.csv", index_col=0).values
-
-n = distance_1.shape[0]
-
-print(f"Loaded matrices for {n} proteins.")
+USE_APPROX = True
 
 
 # -----------------------------
@@ -42,48 +40,76 @@ def make_distance_function(matrix):
 
 
 # -----------------------------
-# CREATE REPRESENTATION PAIR
+# LOAD MATRICES
 # -----------------------------
-X = np.arange(n)
-Y = np.arange(n)
+print("Loading distance matrices...")
 
-representations = RepresentationPair(
-    X=X,
-    Y=Y,
-    d_x=make_distance_function(distance_1),
-    d_y=make_distance_function(distance_2),
-)
+matrices = {}
+ids = {}
+
+for name, path in KERNEL_FILES.items():
+    df = pd.read_csv(path, index_col=0)
+    matrices[name] = df
+    ids[name] = set(df.index)
+
+print("All matrices loaded.")
 
 
 # -----------------------------
-# COMPUTE QSI
+# INITIALIZE METRICS
 # -----------------------------
-print("\nComputing QSI...")
-
 if USE_APPROX:
-    qsi = EfficientApproxQSI(euclidean=False, batch_size=500, no_batches=10)
+    qsi_metric = EfficientApproxQSI(euclidean=False, batch_size=500, no_batches=10)
+    tsi_metric = EfficientApproxTSI(euclidean=False, batch_size=500, no_batches=10)
 else:
-    qsi = EfficientQSI(euclidean=False)
-
-qsi_score = qsi(representations)
-
-print(f"QSI score (cosine vs blosum): {qsi_score}")
+    qsi_metric = EfficientQSI(euclidean=False)
+    tsi_metric = EfficientTSI(euclidean=False)
 
 
 # -----------------------------
-# COMPUTE TSI
+# COMPUTE SCORES
 # -----------------------------
-print("\nComputing TSI...")
+results = []
 
-if USE_APPROX:
-    tsi = EfficientApproxTSI(
-        euclidean=False,
-        batch_size=500,
-        no_batches=10
-    )
-else:
-    tsi = EfficientTSI(euclidean=False)
+for emb in EMB_METHODS:
+    for seq in SEQ_METHODS:
 
-tsi_score = tsi(representations)
+        print(f"Computing QSI/TSI: {emb} vs {seq}")
 
-print(f"TSI score (cosine vs blosum): {tsi_score}")
+        # align matrices
+        common_ids = sorted(ids[emb].intersection(ids[seq]))
+
+        D1 = matrices[emb].loc[common_ids, common_ids].values
+        D2 = matrices[seq].loc[common_ids, common_ids].values
+
+        n = D1.shape[0]
+
+        X = np.arange(n)
+        Y = np.arange(n)
+
+        representations = RepresentationPair(
+            X=X,
+            Y=Y,
+            d_x=make_distance_function(D1),
+            d_y=make_distance_function(D2),
+        )
+
+        qsi_score = qsi_metric(representations)
+        tsi_score = tsi_metric(representations)
+
+        results.append({
+            "embedding_method": emb,
+            "sequence_method": seq,
+            "qsi": qsi_score,
+            "tsi": tsi_score
+        })
+
+
+# -----------------------------
+# SAVE RESULTS
+# -----------------------------
+df_results = pd.DataFrame(results)
+df_results.to_csv(OUTPUT_FILE, index=False)
+
+print("\nSaved QSI/TSI scores to:", OUTPUT_FILE)
+print(df_results)
