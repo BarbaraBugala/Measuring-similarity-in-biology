@@ -5,8 +5,6 @@ This project aims to answer two research questions:
 - Does the capture of known biological patterns improve model performance? Is it correlated?
 
 
----
-
 # Protein Families Used
 
 ## Insulin
@@ -15,16 +13,12 @@ It is **highly conserved across vertebrates** due to strong structural constrain
 
 Sequences used in this dataset have lengths **50–200 amino acids**.
 
----
-
 ## Hemoglobin
 Hemoglobin is an **oxygen-transport protein** found in red blood cells. It consists of subunits containing heme groups that bind oxygen molecules.
 
 Although the overall structure is conserved, sequence variation occurs across species, resulting in **moderate evolutionary diversity**.  
 
 Sequences used here have lengths **130–160 amino acids**.
-
----
 
 ## Protein Kinases
 Protein kinases are enzymes that regulate cellular processes by **phosphorylating target proteins**.  
