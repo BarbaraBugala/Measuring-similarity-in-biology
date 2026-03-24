@@ -8,8 +8,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=24
 #SBATCH --time=04:00:00
-#SBATCH --output=/logs/%x.%j.out
-#SBATCH --error=/logs/%x.%j.err
+#SBATCH --output=/p/home/jusers/bugala1/juwels/logs/%x.%j.out
+#SBATCH --error=/p/home/jusers/bugala1/juwels/logs/%x.%j.err
 
 source $HOME/.bashrc
 
