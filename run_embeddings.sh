@@ -15,4 +15,4 @@ source $HOME/.bashrc
 
 cd /p/home/jusers/bugala1/juwels/Measuring-similarity-in-biology
 
-srun python3 /models/esm2_embeddings.py
+srun python3 models/esm2_embeddings.py
