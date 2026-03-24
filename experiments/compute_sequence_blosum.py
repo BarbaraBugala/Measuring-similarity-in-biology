@@ -18,10 +18,10 @@ from functools import partial
 # -----------------------------
 # CONFIG
 # -----------------------------
-from config import FASTA_FILE, DISTANCE_DIR
+from config import FASTA_FILE, RESULTS_DIR
 
 fasta = FASTA_FILE
-output_dir = DISTANCE_DIR 
+output_dir = RESULTS_DIR 
 output_dir.mkdir(parents=True, exist_ok=True)
 
 distance_paths = output_dir / "distances"

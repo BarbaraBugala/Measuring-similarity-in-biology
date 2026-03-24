@@ -1,14 +1,14 @@
 from pathlib import Path
 import subprocess
 import sys
-from config import FASTA_FILE, DISTANCE_DIR
+from config import FASTA_FILE, RESULTS_DIR
 
 
 def main():
     # Project root
 
     input_fasta = FASTA_FILE
-    output_dir = DISTANCE_DIR / "msa"
+    output_dir = RESULTS_DIR / "msa"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     output_fasta = output_dir / "aligned_mafft.fasta"

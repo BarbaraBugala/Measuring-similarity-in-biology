@@ -1,96 +1,80 @@
 #!/usr/bin/env python3
-"""
-compute_esm_embeddings_raw.py
-
-Compute ESM-2 embeddings for a set of protein sequences from a FASTA file
-and save all embeddings stacked in a single .pt file, preserving the FASTA order.
-"""
-
 import torch
 import esm
 from Bio import SeqIO
 from pathlib import Path
-import torch.nn.functional as F
-import pandas as pd
+
+# Import your prettier config
+from config import FASTA_FILE, EMBEDDINGS_FILE, MODEL_TYPE
 
 # -----------------------------
-# CONFIG
+# MODEL MAPPING
 # -----------------------------
-from config import FASTA_FILE, EMBEDDINGS_FILE
+# Maps your custom MODEL_TYPE strings to (Official Name, Representation Layer)
+MODEL_MAP = {
+    "esm2_8M":   ("esm2_t6_8M_UR50D", 6),
+    "esm2_35M":  ("esm2_t12_35M_UR50D", 12),
+    "esm2_150M": ("esm2_t30_150M_UR50D", 30),
+    "esm2_650M": ("esm2_t33_650M_UR50D", 33),
+    "esm2_3B":   ("esm2_t36_3B_UR50D", 36),
+    "esm2_15B":  ("esm2_t48_15B_UR50D", 48),
+}
+
+if MODEL_TYPE not in MODEL_MAP:
+    raise ValueError(f"Unknown MODEL_TYPE: {MODEL_TYPE}. Please use one of {list(MODEL_MAP.keys())}")
+
+OFFICIAL_NAME, REPR_LAYER = MODEL_MAP[MODEL_TYPE]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 5
-MAX_LEN = 1022  # ESM token limit
+MAX_LEN = 1022 
 
+# -----------------------------
+# LOAD MODEL & DATA
+# -----------------------------
+print(f"Loading {MODEL_TYPE} ({OFFICIAL_NAME}) on {DEVICE}...")
+model, alphabet = esm.pretrained.load_model_and_alphabet(OFFICIAL_NAME)
+model = model.to(DEVICE)
+model.eval()
+
+batch_converter = alphabet.get_batch_converter()
 output_dir = Path(EMBEDDINGS_FILE)
 output_dir.mkdir(parents=True, exist_ok=True)
 
-# -----------------------------
-# HELPER FUNCTIONS
-# -----------------------------
-def batch_generator(data, batch_size):
-    for i in range(0, len(data), batch_size):
-        yield data[i : i + batch_size]
-
-# -----------------------------
-# LOAD MODEL
-# -----------------------------
-print(f"Loading ESM-2 model on {DEVICE}...")
-model, alphabet = esm.pretrained.esm2_t12_35M_UR50D()
-model = model.to(DEVICE)
-model.eval()
-batch_converter = alphabet.get_batch_converter()
-
-# -----------------------------
-# LOAD & FILTER SEQUENCES
-# -----------------------------
 all_records = list(SeqIO.parse(FASTA_FILE, "fasta"))
-all_sequences = []
-skipped = 0
-
-for record in all_records:
-    seq_str = str(record.seq)
-    if len(seq_str) <= MAX_LEN:
-        all_sequences.append((record.id, seq_str))
-    else:
-        skipped += 1
-
-if skipped > 0:
-    print(f"Skipped {skipped} sequences longer than {MAX_LEN} amino acids.")
-
-if not all_sequences:
-    raise ValueError("No valid sequences found!")
-
-print(f"{len(all_sequences)} sequences will be processed.")
+# Truncate to MAX_LEN to avoid positional embedding errors
+all_sequences = [(r.id, str(r.seq)[:MAX_LEN]) for r in all_records]
 
 # -----------------------------
-# COMPUTE & SAVE EMBEDDINGS
+# INFERENCE LOOP
 # -----------------------------
 stacked_embeddings = []
 
 with torch.no_grad():
-    for batch_idx, batch_data in enumerate(batch_generator(all_sequences, BATCH_SIZE)):
+    for i in range(0, len(all_sequences), BATCH_SIZE):
+        batch_data = all_sequences[i : i + BATCH_SIZE]
         labels, strs, tokens = batch_converter(batch_data)
         tokens = tokens.to(DEVICE)
 
-        results = model(tokens, repr_layers=[12], return_contacts=False)
-        token_reps = results["representations"][12]
+        results = model(tokens, repr_layers=[REPR_LAYER], return_contacts=False)
+        token_reps = results["representations"][REPR_LAYER]
 
-        for i, (label, seq) in enumerate(batch_data):
-            seq_len = len(seq)
-            embedding = token_reps[i, 1 : seq_len + 1].mean(0).cpu()
-            stacked_embeddings.append(embedding)
-
-        if DEVICE == "cuda":
-            torch.cuda.empty_cache()
-
-        if (batch_idx + 1) % 5 == 0:
-            print(f"Processed {(batch_idx + 1) * BATCH_SIZE} sequences...")
+        for j, (label, seq) in enumerate(batch_data):
+            # Mean pooling: average over the actual sequence residues 
+            # (index 0 is <cls>, index len+1 is <eos>)
+            mean_emb = token_reps[j, 1 : len(seq) + 1].mean(0).cpu()
+            stacked_embeddings.append(mean_emb)
+        
+        if (i // BATCH_SIZE) % 10 == 0:
+            print(f"Processed {i}/{len(all_sequences)} sequences...")
 
 # -----------------------------
-# SAVE STACKED EMBEDDINGS
+# SAVE OUTPUT
 # -----------------------------
 stacked_tensor = torch.stack(stacked_embeddings)
-stacked_path = output_dir / "all_embeddings.pt"
-torch.save(stacked_tensor, stacked_path)
-print(f"\nAll embeddings stacked and saved to {stacked_path}")
+# Saving with your specific naming convention
+save_path = output_dir / f"all_embeddings_{MODEL_TYPE}.pt"
+torch.save(stacked_tensor, save_path)
+
+print(f"\n✅ Done! Saved {stacked_tensor.shape} embeddings of size {stacked_tensor.shape}")
+print(f"File location: {save_path}")

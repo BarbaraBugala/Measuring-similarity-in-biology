@@ -9,12 +9,12 @@ and sequence-based kernels (Blosum, Hamming, Blast, MSA) and saves results.
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from config import DISTANCE_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS
+from config import RESULTS_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS, MODEL_TYPE
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-OUTPUT_FILE = DISTANCE_DIR / "similarities" / "cka_scores.csv"
+OUTPUT_FILE = RESULTS_DIR / "similarities" / MODEL_TYPE/ "cka_scores.csv"
 OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------

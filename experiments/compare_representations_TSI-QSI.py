@@ -18,13 +18,13 @@ from src.qsi import EfficientQSI, EfficientApproxQSI
 # TSI
 from src.tsi import EfficientTSI, EfficientApproxTSI
 
-from config import DISTANCE_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS
+from config import RESULTS_DIR, KERNEL_FILES, EMB_METHODS, SEQ_METHODS, MODEL_TYPE
 
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-OUTPUT_FILE = DISTANCE_DIR / "similarities" / "qsi_tsi_scores.csv"
+OUTPUT_FILE = RESULTS_DIR / "similarities" / MODEL_TYPE/ "qsi_tsi_scores.csv"
 OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 USE_APPROX = True

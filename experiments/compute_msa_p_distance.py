@@ -18,10 +18,10 @@ def p_distance(seq1, seq2):
     return mismatches / valid_sites
 
 def main():
-    from config import FASTA_FILE, DISTANCE_DIR
+    from config import FASTA_FILE, RESULTS_DIR
 
-    alignment_path = DISTANCE_DIR / "msa" / "aligned_mafft.fasta"
-    output_dir = DISTANCE_DIR 
+    alignment_path = RESULTS_DIR / "msa" / "aligned_mafft.fasta"
+    output_dir = RESULTS_DIR 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     distance_paths = output_dir / "distances"
